@@ -1,6 +1,5 @@
 const CONFIG = {
-  API_URL: "http://192.168.0.146:5000", // 開發環境
-  // API_URL: 'https://your-production-api.com', // 生產環境
+  API_URL: " https://toeic-grades-query-85f602b6b682.herokuapp.com/", // 開發環境
 };
 
 class ScoreQuerySystem {
