@@ -1,49 +1,55 @@
-import msoffcrypto
-from io import BytesIO
-import openpyxl
-import os
-
+import sqlite3
+from pathlib import Path
 
 class GradeDatabase:
     def __init__(self):
-        self.excel_path = 'TOEIC_score.xlsx'
-        self.password = '3273'
-        self.workbook = None
-        self.sheet = None
-        self.load_excel()
+        self.db_path = 'grades.db'
+        self.init_db()
 
-    def decrypt_excel(self):
-        decrypted = BytesIO()
-        with open(self.excel_path, "rb") as f:
-            office_file = msoffcrypto.OfficeFile(f)
-            office_file.load_key(password=self.password)
-            office_file.decrypt(decrypted)
-        return decrypted
-
-    def load_excel(self):
+    def init_db(self):
+        """初始化資料庫並導入資料"""
         try:
-            decrypted_excel = self.decrypt_excel()
-            self.workbook = openpyxl.load_workbook(decrypted_excel)
-            self.sheet = self.workbook.active
+            # 如果資料庫不存在，則創建並導入資料
+            if not Path(self.db_path).exists():
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # 讀取並執行 SQL 檔案
+                with open('grades.sql', 'r', encoding='utf-8') as sql_file:
+                    sql_script = sql_file.read()
+                    cursor.executescript(sql_script)
+                
+                conn.commit()
+                conn.close()
+                print("Database initialized successfully")
         except Exception as e:
-            print(f"Error loading Excel file: {e}")
+            print(f"Error initializing database: {e}")
             raise
 
     def get_grades(self, student_id):
+        """查詢學生成績"""
         try:
-            for row in self.sheet.iter_rows(min_row=2):
-                if str(row[2].value).strip() == student_id:
-                    return {
-                        'student_id': student_id,
-                        'listening_score': row[4].value,
-                        'reading_score': row[5].value,
-                        'total_score': row[6].value
-                    }
-            return None
-        except Exception as e:
-            print(f"Error querying grades: {e}")
-            raise
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT student_id, listening_score, reading_score, total_score 
+                FROM grades 
+                WHERE student_id = ?
+            ''', (student_id,))
+            
+            result = cursor.fetchone()
+            conn.close()
 
-    def __del__(self):
-        if self.workbook:
-            self.workbook.close()
+            if result:
+                return {
+                    'student_id': result[0],
+                    'listening_score': result[1],
+                    'reading_score': result[2],
+                    'total_score': result[3]
+                }
+            return None
+
+        except Exception as e:
+            print(f"Error querying database: {e}")
+            return None

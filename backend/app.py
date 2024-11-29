@@ -4,14 +4,26 @@ from database import GradeDatabase
 import os
 
 app = Flask(__name__)
-CORS(app)  # 啟用 CORS 支援
+
+# 啟用 CORS，允許來自指定來源的請求
+CORS(app, resources={
+     r"/*": {"origins": "https://leolee-0531.github.io"}}, supports_credentials=True)
 
 # 初始化資料庫
 db = GradeDatabase()
 
 
-@app.route('/api/query', methods=['POST'])
+@app.route('/')
+def home():
+    return "Welcome to the TOEIC Grades Query API!"
+
+
+@app.route('/api/query', methods=['POST', 'OPTIONS'])
 def query():
+    if request.method == 'OPTIONS':
+        # 處理預檢請求，返回 200 狀態碼
+        return jsonify({'success': True}), 200
+
     try:
         data = request.get_json()
         student_id = data.get('student_id')
@@ -43,5 +55,6 @@ def query():
 
 
 if __name__ == '__main__':
+    # 默認使用 5000，但 Heroku 會提供 PORT
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
